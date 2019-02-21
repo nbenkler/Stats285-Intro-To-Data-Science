@@ -33,4 +33,20 @@ hw4.md
   + Demonstrates understanding of text manipulation and web scraping
 
 hw4.rmd
-  + code for hw4.rmd
+  + code for hw4.md
+
+## team_hw1
+
+team_hw1.md
+  + final blog post markdown file for team homework assignment 1
+
+team_hw1.rmd
+  + r code for team_hw1.md
+  
+## team_hw2  (A work in progress)
+
+team_hw2.md
+  + knitted markdown file of introductory graphics made for final report
+
+team_hw2.rmd
+  + r code for work done so far
