@@ -1,26 +1,9 @@
----
-title: "Team HW#2"
-author: "Noam Benkler, Kitty Miao"
-date: "Math 285, Winter 2019"
-output: github_document
----
+Team HW\#2
+================
+Noam Benkler, Kitty Miao
+Math 285, Winter 2019
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-library(tidyverse)
-library(readr)
-library(forcats)
-library(knitr)
-```
-
-```{r load_raw_data, include=FALSE}
-trials <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/trials.csv")
-jurors <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/jurors.csv")
-answers <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/voir_dire_answers.csv")
-```
-
-```{r view_raw_data}
+``` r
 # Should be deleted after the project
 # Trial Keys: trial$id == jurors$trial_id == answers$juror_id_trial_id
 # Juror Keys: juror$id == answers$juror_id
@@ -29,20 +12,15 @@ View(jurors)
 View(answers)
 ```
 
-Possible topics:
-1. In each trial, ratio of black and white jurors
-2. Ratio of black and white jurors in each county
-3. Race and strike eligibility
-4. Among the jurors, geographic information for those who got "struck"
-5. TBD...
+Possible topics: 1. In each trial, ratio of black and white jurors 2. Ratio of black and white jurors in each county 3. Race and strike eligibility 4. Among the jurors, geographic information for those who got "struck" 5. TBD...
 
-```{r}
+``` r
 #joining table
 trial_juror_data <- full_join(x = trials, y = jurors, by = c("id" = "trial__id")) %>% 
   select(id, cause_number, county, prosecutor_1, batson_claim_by_defense, race, gender, struck_by, strike_eligibility)
 ```
 
-```{r}
+``` r
 #simple first plot by race
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -88,7 +66,11 @@ trial_juror_data %>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
+```
 
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-2-1.png)
+
+``` r
 #FILTERED FOR JUST ELIMINATED BY PROSECUTION
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -128,7 +110,9 @@ trial_juror_data %>%
   )
 ```
 
-```{r}
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-2-2.png)
+
+``` r
 #plots of juror struck by race, by county
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -176,8 +160,11 @@ trial_juror_data %>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
+```
 
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-3-1.png)
 
+``` r
 #FILTER FOR JUST STATE STIKES
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -221,8 +208,9 @@ trial_juror_data %>%
   )
 ```
 
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-3-2.png)
 
-```{r}
+``` r
 #plot of juror struck by race, by gender
 #creating data subset
 race_and_gender_all<- trial_juror_data %>%
@@ -274,9 +262,11 @@ race_and_gender_all%>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
+```
 
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
-
+``` r
 #FILTER FOR JUST STRUK BY PROSECUTION
 #creating data subset
 race_and_gender_prosec<- trial_juror_data %>%
@@ -324,14 +314,4 @@ race_and_gender_prosec%>%
   )
 ```
 
-
-
-
-
-
-
-
-
-
-
-
+![](team-hw2-team-hw2-9_files/figure-markdown_github/unnamed-chunk-4-2.png)
