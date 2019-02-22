@@ -78,6 +78,8 @@ head(Galton)
 library(tidyverse)
 ```
 
+    ## Warning: package 'tidyverse' was built under R version 3.5.2
+
     ## -- Attaching packages --------------------------------------------------- tidyverse 1.2.1 --
 
     ## v ggplot2 3.1.0     v purrr   0.2.5
