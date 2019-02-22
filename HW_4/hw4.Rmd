@@ -17,7 +17,6 @@ Also let me know:
 **Who you worked with:**
 
 
-
 ### Problem 1
 
 The vector called `words` in `stringr` contains a corpus of 980 words used in text analysis.  Use regular expressions with `stringr` to find the words that satisfy the following descriptions: 
@@ -283,6 +282,7 @@ ggplot(imdb_top_50_gross, aes(x = imdbscore, y = gross, label = title)) +
        y = "U.S. Box Office Gross ($millions)",
        title = "Plot of Movies' IMDb Score against Their Total Box Office Gross \nfor the Top 50 Grossing Movies",
        subtitle = "Outliers labeled by name")
+
 
 # summary(imdb_top_50_gross)
 # gross.q3 <- 205.99
