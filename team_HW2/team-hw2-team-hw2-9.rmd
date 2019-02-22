@@ -36,13 +36,13 @@ Possible topics:
 4. Among the jurors, geographic information for those who got "struck"
 5. TBD...
 
-```{r}
+```{r, include=FALSE}
 #joining table
 trial_juror_data <- full_join(x = trials, y = jurors, by = c("id" = "trial__id")) %>% 
   select(id, cause_number, county, prosecutor_1, batson_claim_by_defense, race, gender, struck_by, strike_eligibility)
 ```
 
-```{r}
+```{r, include=FALSE}
 #simple first plot by race
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -128,7 +128,7 @@ trial_juror_data %>%
   )
 ```
 
-```{r}
+```{r, include=FALSE}
 #plots of juror struck by race, by county
 trial_juror_data %>%
   select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
@@ -222,7 +222,7 @@ trial_juror_data %>%
 ```
 
 
-```{r}
+```{r, include=FALSE}
 #plot of juror struck by race, by gender
 #creating data subset
 race_and_gender_all<- trial_juror_data %>%
