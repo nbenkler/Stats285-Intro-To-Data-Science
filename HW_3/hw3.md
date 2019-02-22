@@ -353,21 +353,6 @@ left_join(flights, planes, by = "plane")%>%
 
     ## Error in left_join(flights, planes, by = "plane"): object 'flights' not found
 
-``` r
-  filter(year <= "1999") %>%
-  summarize(numPlanes = n()) %>% 
-  na.omit() %>%
-  ggplot(aes(fct_reorder(carrier, numPlanes), numPlanes)) + 
-  geom_bar(stat = "identity") +
-  #scale_y_log10() +
-  labs(title = "Barplot of Number of Old Planes Owned by Each Airline Company",
-       x = "Airline Company",
-       y = "Number of Old Planes (>20 years old) (Log Scale)") +
-  theme(panel.grid.major.x = element_blank())
-```
-
-    ## Error in filter(year <= "1999"): object 'year' not found
-
 People who prefer older aircraft should primerily fly on either American Eagle (MQ) or American Airlines (AA) as their planes that flew out of Houston in 2011 have oldest median age.
 
 **c.**
