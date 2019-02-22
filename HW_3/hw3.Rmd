@@ -235,7 +235,7 @@ In this problem you will explore all domestic flights leaving George Bush Interc
 
 Load the data using the following code:
 
-```{r, eval=FALSE}
+```{r}
 flights <- read_csv("data/flights.csv") %>% 
   mutate(date = as.Date(date))
 weather <- read_csv("data/weather.csv") %>% 

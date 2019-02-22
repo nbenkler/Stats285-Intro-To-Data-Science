@@ -310,12 +310,91 @@ Load the data using the following code:
 ``` r
 flights <- read_csv("data/flights.csv") %>% 
   mutate(date = as.Date(date))
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   date = col_datetime(format = ""),
+    ##   hour = col_double(),
+    ##   minute = col_double(),
+    ##   dep = col_double(),
+    ##   arr = col_double(),
+    ##   dep_delay = col_double(),
+    ##   arr_delay = col_double(),
+    ##   carrier = col_character(),
+    ##   flight = col_double(),
+    ##   dest = col_character(),
+    ##   plane = col_character(),
+    ##   cancelled = col_double(),
+    ##   time = col_double(),
+    ##   dist = col_double()
+    ## )
+
+``` r
 weather <- read_csv("data/weather.csv") %>% 
   mutate(date = as.Date(date))
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   date = col_date(format = ""),
+    ##   hour = col_double(),
+    ##   temp = col_double(),
+    ##   dew_point = col_double(),
+    ##   humidity = col_double(),
+    ##   pressure = col_double(),
+    ##   visibility = col_double(),
+    ##   wind_dir = col_character(),
+    ##   wind_dir2 = col_double(),
+    ##   wind_speed = col_double(),
+    ##   gust_speed = col_double(),
+    ##   precip = col_double(),
+    ##   conditions = col_character(),
+    ##   events = col_character()
+    ## )
+
+``` r
 planes <- read_csv("data/planes.csv")
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   plane = col_character(),
+    ##   year = col_double(),
+    ##   mfr = col_character(),
+    ##   model = col_character(),
+    ##   no.eng = col_double(),
+    ##   no.seats = col_double(),
+    ##   speed = col_double(),
+    ##   engine = col_character(),
+    ##   type = col_character()
+    ## )
+
+``` r
 airports <- read_csv("data/airports.csv")
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   iata = col_character(),
+    ##   airport = col_character(),
+    ##   city = col_character(),
+    ##   state = col_character(),
+    ##   country = col_character(),
+    ##   lat = col_double(),
+    ##   long = col_double()
+    ## )
+
+``` r
 states <- read_csv("data/states.csv")
 ```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   state = col_character(),
+    ##   fullname = col_character(),
+    ##   region = col_character()
+    ## )
 
 **a.** Plot a "time series" of the proportion of flights that were delayed by &gt; 30 minutes on each day. i.e.
 
@@ -337,9 +416,9 @@ flights %>%
        title = "Departure delays from Houston in 2011")
 ```
 
-    ## Error in eval(lhs, parent, parent): object 'flights' not found
+    ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 
-Delays over 30 minutes tend to occur most frequently at around 2:00am and 7:00am.
+![](hw3_files/figure-markdown_github/unnamed-chunk-14-1.png) Delays over 30 minutes tend to occur most frequently at around 2:00am and 7:00am.
 
 **b.** Some people prefer flying on older planes. Even though they aren't as nice, they tend to have more room. Which airlines should these people favor?
 
@@ -351,7 +430,24 @@ left_join(flights, planes, by = "plane")%>%
   arrange(median_year)
 ```
 
-    ## Error in left_join(flights, planes, by = "plane"): object 'flights' not found
+    ## # A tibble: 15 x 2
+    ##    carrier median_year
+    ##    <chr>         <dbl>
+    ##  1 MQ             1983
+    ##  2 AA             1988
+    ##  3 DL             1990
+    ##  4 US             1990
+    ##  5 UA             1998
+    ##  6 WN             1998
+    ##  7 CO             2001
+    ##  8 FL             2001
+    ##  9 XE             2001
+    ## 10 EV             2004
+    ## 11 F9             2004
+    ## 12 YV             2004
+    ## 13 OO             2005
+    ## 14 B6             2006
+    ## 15 AS             2007
 
 People who prefer older aircraft should primerily fly on either American Eagle (MQ) or American Airlines (AA) as their planes that flew out of Houston in 2011 have oldest median age.
 
@@ -371,11 +467,6 @@ flight_paths <- flights %>%
   left_join(airports, by = c("dest" = "iata")) %>%
   count(state) %>%
   arrange(desc(nn))
-```
-
-    ## Error in eval(lhs, parent, parent): object 'flights' not found
-
-``` r
 flight_paths %>%
   ggplot(aes(x = nn, y = fct_reorder(fct_explicit_na(state), nn))) +
   geom_point() +
@@ -383,7 +474,7 @@ flight_paths %>%
        title = "Flight paths from Houston")
 ```
 
-    ## Error in eval(lhs, parent, parent): object 'flight_paths' not found
+![](hw3_files/figure-markdown_github/unnamed-chunk-16-1.png)
 
 ``` r
 #number of individual flights to each state
@@ -393,11 +484,7 @@ indiv_flights <- flights %>%
   count(state) %>%
   arrange(desc(n)) %>%
   mutate(state = fct_explicit_na(state))
-```
 
-    ## Error in eval(lhs, parent, parent): object 'flights' not found
-
-``` r
 indiv_flights %>%
   ggplot(aes(x = n, y = fct_reorder(state, n))) +
   geom_point() +
@@ -405,7 +492,7 @@ indiv_flights %>%
        title = "Flights from Houston")
 ```
 
-    ## Error in eval(lhs, parent, parent): object 'indiv_flights' not found
+![](hw3_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 **d.** I want to know proportionately what regions (NE, south, west, midwest) each carrier flies to/from Houston in the month of July. (Hint: check out lubridate package and month())
 
@@ -432,12 +519,21 @@ regional_flights <- flights %>%
   count(carrier, region) %>%
   group_by(carrier) %>%
   mutate(prop = n / sum(n))
-```
-
-    ## Error in eval(lhs, parent, parent): object 'flights' not found
-
-``` r
 regional_flights
 ```
 
-    ## Error in eval(expr, envir, enclos): object 'regional_flights' not found
+    ## # A tibble: 34 x 4
+    ## # Groups:   carrier [15]
+    ##    carrier region      n  prop
+    ##    <chr>   <chr>   <int> <dbl>
+    ##  1 AA      south     273 1    
+    ##  2 AS      west       31 1    
+    ##  3 B6      NE         62 1    
+    ##  4 CO      midwest   713 0.117
+    ##  5 CO      NE       1060 0.174
+    ##  6 CO      south    2073 0.340
+    ##  7 CO      west     2246 0.369
+    ##  8 DL      midwest    47 0.208
+    ##  9 DL      south     179 0.792
+    ## 10 EV      midwest    95 0.579
+    ## # ... with 24 more rows
