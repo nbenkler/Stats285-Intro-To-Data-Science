@@ -43,10 +43,10 @@ team_hw1.md
 team_hw1.rmd
   + r code for team_hw1.md
   
-## team_hw2  (A work in progress)
+## team_hw2 
 
 team_hw2.md
-  + knitted markdown file of introductory graphics made for final report
+  + Short Paper written on whether racial discrimination still exists in the jury selection process despite 1986 ruling in *Batson v. Kenucky*
 
 team_hw2.rmd
-  + r code for work done so far
+  + r code for md document
