@@ -1,57 +1,36 @@
 ---
-title: "Team HW#2"
+title: "The Role of Race in Jury Selection."
 author: "Noam Benkler, Kitty Miao"
 date: "Math 285, Winter 2019"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, results='hide'}
 knitr::opts_chunk$set(echo = TRUE)
-
 library(tidyverse)
 library(readr)
 library(forcats)
 library(knitr)
 ```
 
-```{r load_raw_data, include=FALSE}
+```{r load_raw_data, include=FALSE, results='hide'}
 trials <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/trials.csv")
 jurors <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/jurors.csv")
 answers <- read.csv("https://raw.githubusercontent.com/APM-Reports/jury-data/master/voir_dire_answers.csv")
 ```
 
-```{r view_raw_data}
-# Should be deleted after the project
-# Trial Keys: trial$id == jurors$trial_id == answers$juror_id_trial_id
-# Juror Keys: juror$id == answers$juror_id
-View(trials) 
-View(jurors)
-View(answers)
-```
 
-Possible topics:
-1. In each trial, ratio of black and white jurors
-2. Ratio of black and white jurors in each county
-3. Race and strike eligibility
-4. Among the jurors, geographic information for those who got "struck"
-5. TBD...
-
-```{r}
+```{r join_table, include=FALSE, results='hide', warning=FALSE}
 #joining table
-trial_juror_data <- full_join(x = trials, y = jurors, by = c("id" = "trial__id")) %>% 
-  select(id, cause_number, county, prosecutor_1, batson_claim_by_defense, race, gender, struck_by, strike_eligibility)
-```
-
-```{r}
-#simple first plot by race
-trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
+trial_juror_raw <- full_join(x = trials, y = jurors, by = c("id" = "trial__id")) %>% 
+  select(id, county, race, gender, struck_by)
+trial_juror_data <- trial_juror_raw %>%
   mutate(struck_condition = fct_collapse(struck_by,
-                               struck = c("Struck by the state",
+                               'Struck' = c("Struck by the state",
                                           "Struck for cause", 
                                           "Struck by the defense",
                                           "Struck without notation"),
-                               not_struck = c("Juror chosen to serve on jury",
+                               'Not Struck' = c("Juror chosen to serve on jury",
                                               "Juror excused/absent",
                                               "Juror not struck",
                                               "Juror chosen as alternate"))) %>%
@@ -62,12 +41,43 @@ trial_juror_data %>%
                                        "Latino",
                                        "Unknown"))) %>%
   filter(struck_by != "Unknown", race != "other") %>%
-  group_by(race) %>%
+  group_by(race)
+```
+
+
+## Introduction
+
+In 1986, the Supreme Court ruled in *Batson v. Kenucky* that banned prosecutors from using race as a reson to impose peremptory strikes against African-American (referred as Black in graphs) potential jurors. However, despite the effort made by the Supreme Court, racial discrimination still exists in the jury selection process, and in ways prosecutors treat jurors of different races. 
+
+Collected by journalists working on the APM Reports podcast "In the Dark", the data set from `r nrow(trials)` trials from 1992 to 2017 was used to analyze peremptory strike decisions in the Fifth Circuit Court District of Mississippi in this report. We found that African-American potential jurors were disproportionately struck by Missisipi courts, regardless genders of the jurors and court locations.
+
+## Methodology
+
+We analyzed the role of race in juror selection decisions by examining the proportion of strikes within each race group. In other words, we were concerned about relative juror selection results, instead of exact numbers of jurors selected on jury. More specifically, we first presented and discussed the results of race and selection in Mississippi in general, and then investigated the regional and gender dependence of these results. All data sets we used were from APM Reports, and we did not acquire additional data.
+
+#### Data manipulation
+
+We first joined the `trials` and `jurors` data sets from the APM Reports in order to get information about each trial involved in the study and each juror involved in each trial. We then filtered the data set to only look at trial identification number, the county in which the trial took place, the race and gender of the jurors, and whether the juror was struck from the case and by which party. In order to get a better sense of relative proportions of jurors struck we collapsed the `struck_by` factor into two categories, whether the juror was struck from the case or whether they were not. Then, we filtered the data to only look at black and white jurors as we were only interested in the relative proportions of those two races. Finally, as the study was looking at prosecutors’ use of race in jury selection, we decided to compare proportions of total jurors struck to proportions of jurors struck by the state for each base comparison we executed.
+
+## Results
+
+The APM Reports data set contained information of `r nrow(jurors)` potential jurors. We analyzed juror selection results by the prosectuion, and by the court system as a whole within Missisipi generally, within individual counties within the 5th circit court district, and accounting for the role of gender. 
+
+#### Juror selection results and race in Missisipi
+
+APM reports gathered race data on `r nrow(jurors)` potential jurors. Of those `r nrow(jurors)` jurors, 51.9% of the black jurors were struck, nearly 1.3 times as many as white jurors (39.3%). This means that there is a overall trend that the courts preferred not to have black people serving in the court. In particular, when we closely examined the number of jurors struck by state this disparity became more striking. Our data revealed the prosecution struck 53.7% of black potential jurors, which is nearly 3 times higher than the 18.2% of white potential jurors the state chose to strike.
+
+```{r general_race_plot, echo=FALSE}
+#simple first plot by race
+race_general <- trial_juror_data %>%
+  select(race, struck_condition) %>%
   mutate(n = n()) %>%
   group_by(race, struck_condition) %>%
   mutate(prop_struck = n()/n) %>%
   group_by(race, struck_condition, prop_struck) %>%
-  summarise() %>% 
+  summarise()
+# Plot
+race_general %>%
   ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
   facet_wrap(~struck_condition) +
@@ -88,16 +98,8 @@ trial_juror_data %>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
-
 #FILTERED FOR JUST ELIMINATED BY PROSECUTION
-trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
-  mutate(race = fct_collapse(race,
-                             black = "Black",
-                             white = "White",
-                             other = c("Asian",
-                                       "Latino",
-                                       "Unknown"))) %>%
+trial_juror_data%>%
   filter(struck_by != "Unknown", race != "other") %>%
   filter(struck_by == "Struck by the state" | struck_by == "Juror chosen to serve on jury") %>%
   group_by(race) %>%
@@ -105,7 +107,7 @@ trial_juror_data %>%
   group_by(race, struck_by) %>%
   mutate(prop_struck = n()/n) %>%
   group_by(race, struck_by, prop_struck) %>%
-  summarise() %>% 
+  summarise()%>%
   ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
   facet_wrap(~struck_by) +
@@ -128,38 +130,26 @@ trial_juror_data %>%
   )
 ```
 
-```{r}
-#plots of juror struck by race, by county
-trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
-  mutate(struck_condition = fct_collapse(struck_by,
-                               struck = c("Struck by the state",
-                                          "Struck for cause", 
-                                          "Struck by the defense",
-                                          "Struck without notation"),
-                               not_struck = c("Juror chosen to serve on jury",
-                                              "Juror excused/absent",
-                                              "Juror not struck",
-                                              "Juror chosen as alternate"))) %>%
-  mutate(race = fct_collapse(race,
-                             black = "Black",
-                             white = "White",
-                             other = c("Asian",
-                                       "Latino",
-                                       "Unknown"))) %>%
-  filter(struck_by != "Unknown", race != "other") %>%
-  group_by(race) %>%
-  mutate(n = n()) %>%
+#### Juror selection results and race in individual counties
+
+Motivated to investigate further into the juror selection disparities due to race, we analyzed the variations of proportions of potential jurors who got struck in different counties. We found that, in every single county, jurors of african american decent were more likely to be struck from the case than white jurors. We found the preference for white jurors over black jurors was weakest in Webster, where only 41.8% black jurors were struck. 
+
+When we filtered the data to solely focus on the prosecution, however, the extent of racial bias in jury selection was made eminently clear. Even in Choctaw county, which had the smallesed racial gap in strike proportions by the state, the percent of black jurors struck (49.5%) was over twice as high as the percent of white jurors struck (23.4%). In Carroll, the county with the highest racial gap, the percent of black jurors struck by the state (60.8%) was just under six times higher than the percent of white jurors struck by the state (10.5%).
+
+```{r race_county, echo=FALSE}
+# To create a table that compares the proportion of white and black people who got struck/not_struck in different counties.
+race_and_county <- trial_juror_data %>%
+  select(race, county, struck_condition) %>%
+  mutate(pop_race = n()) %>%
   group_by(race, county) %>%
-  mutate(county_pop = n()) %>%
+  mutate(pop_in_county = n()) %>%
   group_by(race, county, struck_condition) %>%
-  mutate(prop_struck = n()/county_pop) %>%
-  group_by(race, struck_condition, prop_struck, county) %>%
-  summarise() %>% 
-  ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
+  mutate(prop_struck_in_county = n()/pop_in_county)
+race_and_county %>%
+  ggplot(mapping = aes(x = race, y = prop_struck_in_county, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
-  facet_grid(fct_rev(struck_condition)~county) +
-  geom_bar(stat = "identity", position = position_dodge(), color = "black") +
+  facet_grid(fct_rev(struck_condition) ~ county) +
+  geom_col(position = "dodge", color = "black") +
   labs(title = "Proportion of Jurors Struck and not Struck by Race \nWithin Each 5th Circit Court District County",
        y = "Proportion Struck",
        x = "Race",
@@ -176,17 +166,8 @@ trial_juror_data %>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
-
-
 #FILTER FOR JUST STATE STIKES
-trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
-  mutate(race = fct_collapse(race,
-                             black = "Black",
-                             white = "White",
-                             other = c("Asian",
-                                       "Latino",
-                                       "Unknown"))) %>%
+race_county_state_only <- trial_juror_data %>%
   filter(struck_by != "Unknown", race != "other") %>%
   filter(struck_by == "Struck by the state" | struck_by == "Juror chosen to serve on jury") %>%
   mutate(struck_by = fct_recode(struck_by,
@@ -198,7 +179,9 @@ trial_juror_data %>%
   group_by(race, county, struck_by) %>%
   mutate(prop_struck = n()/county_pop) %>%
   group_by(race, struck_by, prop_struck, county) %>%
-  summarise() %>% 
+  summarise()
+# Plot
+race_county_state_only %>%
   ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
   facet_grid(fct_rev(struck_by)~county) +
@@ -221,39 +204,25 @@ trial_juror_data %>%
   )
 ```
 
+#### Juror selection results, race and gender
 
-```{r}
-#plot of juror struck by race, by gender
-#creating data subset
-race_and_gender_all<- trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
-  mutate(struck_condition = fct_collapse(struck_by,
-                               struck = c("Struck by the state",
-                                          "Struck for cause", 
-                                          "Struck by the defense",
-                                          "Struck without notation"),
-                               not_struck = c("Juror chosen to serve on jury",
-                                              "Juror excused/absent",
-                                              "Juror not struck",
-                                              "Juror chosen as alternate"))) %>%
-  mutate(race = fct_collapse(race,
-                             black = "Black",
-                             white = "White",
-                             other = c("Asian",
-                                       "Latino",
-                                       "Unknown"))) %>%
-  filter(struck_by != "Unknown", race != "other") %>%
-  group_by(race) %>%
+In addition to just looking at race, we wanted to see whether gender played a role in the jury selection process. From the data of `r nrow(jurors)` potential jurors, we found some overall preference for female over male jurors. While 52.2% black males excluded from serving on jury, approximately 1% higher than their female counterparts (51.6%). Similarly, 41.4% of the white males were struck by the court, yet only 38.1% of the white females were struck. 
+
+However, gender did not play a significant role in minimizing racial biases. Still across the board, it was clear that black potential jurors were struck at a much higher proportion than white potential jurors, reguardless of race. While the percent of male and female black jurors struck by the state remained relatively similar (54.8% and 53.7% respectively), the percent of male and female jurors struck by the state dropped significantly(19.2%	and 17.6%	respectively), compared to the percent struck total, and were less than half the as high as the percents of male and female black jurors struck.
+
+```{r race_gender, echo=FALSE}
+# To create a table that investigate the role of gender in juror selection.
+race_and_gender <- trial_juror_data %>%
+  filter(gender != "Unknown") %>%
   mutate(n = n()) %>%
   group_by(race, gender) %>%
   mutate(gender_comp = n()) %>%
   group_by(race, gender, struck_condition) %>%
   mutate(prop_struck = n()/gender_comp) %>%
   group_by(race, gender, struck_condition, prop_struck) %>%
-  summarise() 
-
-#plot
-race_and_gender_all%>% 
+  summarise()
+# Plot
+race_and_gender %>% 
   ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
   facet_grid(fct_rev(struck_condition)~gender) +
@@ -274,20 +243,9 @@ race_and_gender_all%>%
     strip.text = element_text(color = "white"),
     legend.position = "none"
   )
-
-
-
 #FILTER FOR JUST STRUK BY PROSECUTION
-#creating data subset
-race_and_gender_prosec<- trial_juror_data %>%
-  select(-c(cause_number, batson_claim_by_defense, strike_eligibility))%>%
-  mutate(race = fct_collapse(race,
-                             black = "Black",
-                             white = "White",
-                             other = c("Asian",
-                                       "Latino",
-                                       "Unknown"))) %>%
-  filter(struck_by != "Unknown", race != "other") %>%
+race_and_gender_prosec <- trial_juror_data %>%
+  filter(struck_by != "Unknown", race != "other", gender != "Unknown") %>%
   filter(struck_by == "Struck by the state" | struck_by == "Juror chosen to serve on jury") %>%
   mutate(struck_by = fct_recode(struck_by,
                                 "Juror Served"="Juror chosen to serve on jury"))%>%
@@ -299,9 +257,8 @@ race_and_gender_prosec<- trial_juror_data %>%
   mutate(prop_struck = n()/gender_comp) %>%
   group_by(race, gender, struck_by, prop_struck) %>%
   summarise()
-
-#plot
-race_and_gender_prosec%>% 
+# Plot
+race_and_gender_prosec%>%
   ggplot(aes(fct_reorder(race, prop_struck), prop_struck, fill = race)) +
   scale_fill_manual(values=c("black", "white")) +
   facet_grid(fct_rev(struck_by)~gender) +
@@ -324,14 +281,6 @@ race_and_gender_prosec%>%
   )
 ```
 
+## Conclusion
 
-
-
-
-
-
-
-
-
-
-
+Over the course of this paper we attempted to determine whether prosecutors’ use of race in jury selection in the Flowers case was part of a larger pattern in the Fifth Circuit Court District of Mississippi during Evans’ tenure. We believe it is. No matter if we break down the data by race neutral factors, our plots show wide-spread racial disparities in strike rates. Moreover, we have found that the prosecution tend to have exercised strikes against black jurors at a much higher rate than white jurors, and at a much higher ratio than the total strikerate in the 5th circut court district. It is clear that the use of race in jury selection in the Flowers case was part of a larger pattern in the Fifth Circuit Court District of Mississippi during Evans’ tenure.
