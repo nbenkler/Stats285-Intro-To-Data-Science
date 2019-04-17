@@ -9,4 +9,5 @@ hw5.Rmd
   
 hw5.md
   + completed markdown file for homework.
-  +NB: LaTeX commands and tables don't work in github .md documents so must open as .html doccument to view completed .md file
+  
+  + NB: LaTeX commands and tables don't work in github .md documents so must open as .html doccument to view completed .md file
