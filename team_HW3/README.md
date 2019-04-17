@@ -2,17 +2,10 @@ Team Assignment 3: Classification
 ================
 Math 285, Winter 2019
 
-Due date
---------
-
--   Push your test set predictions to GitHub by
-
--   Push your report.Rmd and report.md files to GitHub by 11:59 p.m. on Wednesday, March 6.
-
 Description
 -----------
 
-Use the training data below to predict the county-level `winner16` of the 2016 presidential election, classified as Democratic (Clinton) or Republican (Trump):
+For this project we were directed to use the training data below to predict the county-level `winner16` of the 2016 presidential election, classified as Democratic (Clinton) or Republican (Trump):
 
 ``` r
 train <- read_csv("https://aloy.rbind.io/data/train.csv")
@@ -24,78 +17,21 @@ The first 51 variables in this data frame contain county-level demographic and e
 key <- read.csv("https://aloy.rbind.io/data/county_facts_dictionary.csv")
 ```
 
-### Your task
+### Our task
 
-Use the training data to create classification model for `winner16`. I'll be judging your predictions based on your accuracy.
+Use the training data to create classification model for `winner16`.
 
 -   Use validation or cross-validation with the training data to avoid overfitting your model to the (entire) training data set which could produce a poor fit to the new test data.
 -   Be sure to tune your model.
 -   You don't need to include all 51 predictors in your model/method, so be sure to explore and bring in background knowledge.
 -   There is variation on when the county-level variables were measured. Ideally the time frame of these would all in 2016 but this type of info is not always available!
 
-### Deliverables
+### Data
 
-1.  **Predictions** After class on Monday (3/4) I will provide a test data set without the `winner` column.
-
-    ``` r
-    testNoY <- read_csv("https://aloy.rbind.io/data/testNoY.csv")
-    ```
-
-    Once you find a suitable classifier using the training data, use your classifier to predict responses for the test data. Add these predicted `pred_winner` values to the 52nd column. **Use this exact column name!** Save this modified test data file as a .csv with your team's last names added to the file name:
-
-    ``` r
-    write_csv(testNoY, "testNoY_LastNames.csv")
-    ```
-
-    Push this file to your GitHub repo. I will compute your accuracy and share the "leaderboard." *Make sure that you don't rearrange the order of the rows because there is not a row id given in the data to match with the actual response file!*
-
-2.  **Write-up** Produce a detailed (2-3 pages) write-up of your classification method. Describe any data cleanup (preprocessing) that was needed and describe how you arrived at your final classifier, including any error (or other evaluation metrics) measured during training. I should be able to read your writeup and come away with a sound understanding of how to reproduce your test set predictions. If you use any classification methods not covered in class, you should explain how the methods work. (You are not expected to do this, but you can if you're interested.)
-
-    I don't want to see R code in your write up, but it should be included either at the end of the write up document or in a separate .Rmd. If your code is slow to run, please submit separate writeup .Rmd and analysis code .Rmd files. Either way, make sure your code is concise and well commented. I should be able to run your code and reproduce your test set predictions.
-
-Team assignments
-----------------
-
-[Link to assignment](https://classroom.github.com/g/Wn3XRSCF)
-
-The first group member to accept the assignment should create a team named "team-hw3-X" where X denotes your team number.
-
-|  Team| Name                    | Partner                  |
-|-----:|:------------------------|:-------------------------|
-|     5| Alyssa Akiyama          | Zhao, Megan              |
-|     6| Noam Benkler            | White, Lewis             |
-|    13| Nupur Bindal            | Meza-Bigornia, Jez       |
-|    15| Joey Caradimitropoulo   | Chen, Serafina           |
-|    15| Serafina Chen           | Caradimitropoulo, Joey   |
-|    16| Dean Gladish            | Smith, Liralyn           |
-|     8| Phuoc Huynh             | Isbell, Nate             |
-|     8| Nate Isbell             | Huynh, Phuoc             |
-|     1| Dallas Keate            | Roy, Andrew              |
-|    12| Andrew Lin              | Rye, Dylan               |
-|    14| Yanhan Lyu              | Miao, Kitty              |
-|     4| Nathan Mannes           | Mehta, Tanvi             |
-|     2| Daniel Matsuda          | Perl, David              |
-|    17| Natalie Maurice         | Mayville, Quinn          |
-|    17| Quinn Mayville          | Maurice, Natalie         |
-|     4| Tanvi Mehta             | Mannes, Nathan           |
-|    13| Jez Meza-Bigornia       | Bindal, Nupur            |
-|    14| Kitty Miao              | Lyu, Yanhan              |
-|    10| Jay Na                  | Yu, Kavie                |
-|     2| David Perl              | Matsuda, Daniel          |
-|    11| Elliot Pickens          | Schoch, Tim              |
-|     3| Aaron Prentice          | Ruan, Chunjin            |
-|     1| Andrew Roy              | Keate, Dallas            |
-|     3| Chunjin Ruan            | Prentice, Aaron          |
-|    12| Dylan Rye               | Lin, Andrew              |
-|    11| Tim Schoch              | Pickens, Elliot          |
-|     7| Ben Schwartz            | Zaytoun, Christian       |
-|    16| Liralyn Smith           | Gladish, Dean            |
-|     6| Lewis White             | Benkler, Noam            |
-|     9| Siang Wongrattanapiboon | Zhang, Arthur            |
-|    10| Kavie Yu                | Na, Jay                  |
-|     7| Christian Zaytoun       | Schwartz, Ben            |
-|     9| Arthur Zhang            | Wongrattanapiboon, Siang |
-|     5| Megan Zhao              | Akiyama, Alyssa          |
+#### training data
+``` r
+train <- read_csv("https://aloy.rbind.io/data/train.csv")
+```
 
 Data Dictionary
 ---------------
