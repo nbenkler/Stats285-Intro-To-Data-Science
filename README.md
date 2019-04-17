@@ -34,6 +34,15 @@ hw4.md
 
 hw4.rmd
   + code for hw4.md
+  
+ ## HW_5
+
+hw5.md
+  + Demonstrates understanding of classification using k-NN, cross validation, and classification trees
+
+hw5.rmd
+  + code for hw5.md
+  
 
 ## team_hw1
 
