@@ -7,5 +7,5 @@ HW1 focused on basic r commands and plotting
 hw1.md
   + markdown file for completed homework
   
-hw2.rmd
+hw1.rmd
   + r code for completed hw.
