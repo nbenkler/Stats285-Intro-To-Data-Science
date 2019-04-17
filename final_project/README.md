@@ -1,5 +1,6 @@
 ## Final Project
-Github repo: https://github.com/intro-data-science-w2019/final-project-yeehaw
+
+Final Shiny App: https://noam-benkler.shinyapps.io/Math285-Data-Science-Final-Project/
 
 Team members: Nupur Bindal, Noam Benkler, Daniel Matsuda
 
