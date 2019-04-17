@@ -1,0 +1,845 @@
+---
+output: flexdashboard::flex_dashboard
+runtime: shiny
+---
+```{r setup, include=FALSE, context = "setup"}
+knitr::opts_chunk$set(echo = TRUE)
+library(flexdashboard)
+library(tidyverse)
+library(dplyr)
+library(caret)
+library(class)
+library(shiny)
+library(shinydashboard)
+library(forcats)
+library(DT)
+library(plotly)
+library(rpart)
+library(randomForest)
+library(partykit)
+library(factoextra)
+library(cluster)
+```
+
+```{r, include=FALSE}
+#loading in the data
+all_ages <- read.csv("data/all-ages.csv")
+grad_students <- read.csv("data/grad-students.csv")
+recent_grads <- read.csv("data/recent-grads.csv")
+majors <- read.csv("data/majors-list.csv")
+all_ages_cluster <- all_ages %>%
+  select(-Major, -Major_category, - Major_code)
+
+all_ages_cluster
+
+xvars_all <- c(
+  "Major" = "Major",
+   "Major Category" = "Major_category"
+)
+
+yvars_all <- c(
+  "Total Majors" = "Total",
+  "Total Employed" = "Employed",
+  "Full Time Year Round Employment" = "Employed_full_time_year_round",
+  "Total Unemployed" = "Unemployed",
+  "Unemployment Rate (prop)" = "Unemployment_rate",
+  "Median Income ($)" = "Median",
+  "Income 25th Percentile ($)" = "P25th",
+  "Income 75th Percentile ($)" = "P75th"
+)
+
+colors_all <- c(
+  "Major" = "Major",
+  "Major Category" = "Major_category",
+  "Total Majors" = "Total",
+  "Total Employed" = "Employed",
+  "Full Time Year Round Employment" = "Employed_full_time_year_round",
+  "Total Unemployed" = "Unemployed",
+  "Unemployment Rate (prop)" = "Unemployment_rate",
+  "Median Income ($)" = "Median",
+  "Income 25th Percentile ($)" = "P25th",
+  "Income 75th Percentile ($)" = "P75th"
+)
+
+xvars_rec <- c(
+  "Major" = "Major",
+   "Major Category" = "Major_category"
+)
+yvars_rec <- c(
+  "Rank by Median Income" = "Rank",
+  "Total Majors" = "Total",
+  "Male Majors" = "Men",
+  "Female Majors" = "Women",
+  "Percent of Majors Who are Women" = "ShareWomen",
+  "Total Employed" = "Employed",
+  "Employed Full Time" = "Full_time",
+  "Employed Part Time" = "Part_time",
+  "Employed Full Time Year Round" = "Full_time_year_round",
+  "Total Unemployed" = "Unemployed",
+  "Unemployment Rate (prop)" = "Unemployment_rate",
+  "Median Income ($)" = "Median",
+  "Income 25th Percentile ($)" = "P25th",
+  "Income 75th Percentile ($)" = "P75th"
+)
+colors_rec <- c(
+  "Major" = "Major",
+  "Major Category" = "Major_category",
+  "Rank by Median Income" = "Rank",
+  "Total Majors" = "Total",
+  "Male Majors" = "Men",
+  "Female Majors" = "Women",
+  "Percent of Majors Who are Women" = "ShareWomen",
+  "Total Employed" = "Employed",
+  "Employed Full Time" = "Full_time",
+  "Employed Part Time" = "Part_time",
+  "Employed Full Time Year Round" = "Full_time_year_round",
+  "Total Unemployed" = "Unemployed",
+  "Unemployment Rate (prop)" = "Unemployment_rate",
+  "Median Income ($)" = "Median",
+  "Income 25th Percentile ($)" = "P25th",
+  "Income 75th Percentile ($)" = "P75th"
+)
+
+
+xvars_grad <- c(
+  "Major" = "Major",
+   "Major Category" = "Major_category"
+)
+yvars_grad <- c(
+  "Total Students (Grad & Non-grad)" = "_total",
+  "Students Employed" = "_employed",
+  "Students Employed Full Time Year Round" = "_full_time_year_round",
+  "Students Unemployed" = "_unemployed",
+  "Unemployment Rate (prop)" = "_unemployment_rate",
+  "Median Income ($)" = "_median",
+  "Income 25th Percentile ($)" = "_P25",
+  "Income 75th Percentile ($)" = "_P75"
+)
+colors_grad <- c(
+  "Major" = "Major",
+  "Major Category" = "Major_category",
+  "Total Students (Grad & Non-grad)" = "_total",
+  "Students Employed" = "_employed",
+  "Students Employed Full Time Year Round" = "_full_time_year_round",
+  "Students Unemployed" = "_unemployed",
+  "Unemployment Rate (prop)" = "_unemployment_rate",
+  "Median Income ($)" = "_median",
+  "Income 25th Percentile ($)" = "_P25",
+  "Income 75th Percentile ($)" = "_P75"
+)
+```
+
+```{r, echo=FALSE}
+sidebar <- dashboardSidebar(
+  hr(),
+  sidebarMenu(id="tabs",
+              menuItem("Title Page",
+                       tabName = "contents",
+                       icon = icon("list"),
+                       selected = TRUE
+                       ),
+              menuItem("Report", 
+                       tabName="report", 
+                       icon = icon("file-text-o")
+                       ),
+              menuItem("Overview Plots", icon=icon("line-chart"),
+                       menuSubItem("All Ages Plot",
+                                   tabName = "aa_plot",
+                                   icon = icon("angle-right")),
+                       menuSubItem("Recent Grads Plot (age < 28)",
+                                   tabName = "rg_plot", 
+                                   icon = icon("angle-right")),
+                       menuSubItem("Grad Students Plot (age 25+)", 
+                          tabName = "gs_plot", 
+                          icon = icon("angle-right"))),
+              menuItem("Tables", tabName = "tables", icon=icon("table"),
+                       menuSubItem("All Ages Table",
+                                   tabName = "aa_table",
+                                   icon = icon("angle-right")),
+                       menuSubItem("Recent Grads Table",
+                                   tabName = "rg_table",
+                                   icon = icon("angle-right")),
+                       menuSubItem("Grad Student's Table",
+                                   tabName = "gs_table",
+                                   icon = icon("angle-right"))
+                       ),
+              menuItem("Classification", icon = icon("sitemap"),
+                       menuSubItem("Formal Classification Method",
+                                   tabName = "classification",
+                                   icon = icon("angle-right")),
+                       menuSubItem("K-means Interactive Plot",
+                                   tabName = "k_means_plots",
+                                   icon = icon("angle-right"))
+                       ),
+              menuItem("ReadMe", tabName = "readme", icon=icon("mortar-board")),
+              menuItem("About", tabName = "about", icon = icon("question"))
+              )
+)
+
+body <- dashboardBody(
+  tabItems(
+    tabItem(tabName = "contents",
+            fluidRow(
+              box(width = NULL,
+                  color = "purple",
+                  h1("Chooing a Major Based on Future Profit"),
+                  h3("written by: Noam Benkler, Nupur Bindal, and Daniel Matsuda"))
+            ),
+            fluidRow(
+              column(3,
+                     fluidRow(
+                       box(width = 12,
+                           title = "Contents",
+                           color = "purple",
+                           solidHeader = TRUE,
+                           collapsible = TRUE,
+                           h4("Report: "),
+                           actionButton("link_report", "Go To Report"),
+                           br(),
+                           br(),
+                           h4("Plots: "),
+                           actionButton("link_plot_aa", "Go To All Ages Plot"),
+                           br(),
+                           actionButton("link_plot_rg", "Go To Recent Grads Plot"),
+                           br(),
+                           actionButton("link_plot_gs", "Go To Grad Students Plot"),
+                           br(),
+                           br(),
+                           h4("Tables: "),
+                           actionButton("link_table_aa", "Go To All Ages Table"),
+                           br(),
+                           actionButton("link_table_rg", "Go To Recent Grads Table"),
+                           br(),
+                           actionButton("link_table_gs", "Go To Grad Students Table"),
+                           br(),
+                           br(),
+                           h4("Classification: "),
+                           actionButton("link_classification", 
+                                        "Go To Classification Page"),
+                           br(),
+                           actionButton("link_classification_plots", 
+                                        "Go To K-means Clustering Plot"),
+                           br(),
+                           br(),
+                           h4("README: "),
+                           actionButton("link_readme", "Go To README File"),
+                           br(),
+                           br(),
+                           h4("About: "),
+                           actionButton("link_about", "Go To About Section")
+                           )
+                     )
+                     
+              ),
+              column(9,
+                     fluidRow(
+                       box(width = NULL,
+                           title = "Report",
+                           color = "purple",
+                           solidHeader = TRUE,
+                           h4("Central Report on Which Major to Choose Given Financial
+                           Goals"),
+                           tags$b("Sections: "),
+                           br(),
+                           "*Introduction (introduction to application)",
+                           br(),
+                           "*Background (background information on data studied)",
+                           br(),
+                           "*Data Description"
+                           )
+                     ),
+                     fluidRow(
+                           box(width = NULL,
+                               title = "Overview Plots",
+                               color = "purple",
+                               solidHeader = TRUE,
+                               h4("Interactive Plots for User Data Exploration "),
+                               tags$b("Sections: "),
+                               br(),
+                               "*All Ages Plot (Plot Exploring Data on Students of 
+                                All Ages)",
+                               br(),
+                               "*Recent Grads Plot (Plot Exploring Data on Students 
+                               under 28 years old)",
+                               br(),
+                               "*Grad Students Plot (Plot Exploring Data on Students
+                               aged 25 and Older)")
+                     ),
+                     fluidRow(
+                           box(width = NULL,
+                               title = "Overview Tables",
+                               color = "purple",
+                               solidHeader = TRUE,
+                               h4("Interactive Tables for User Data Exploration"),
+                               tags$b("Sections: "),
+                               br(),
+                               "*All Ages Table (Table Exploring Data on Students of 
+                                All Ages)",
+                               br(),
+                               "*Recent Grads Table (Table Exploring Data on Students 
+                               under 28 years old)",
+                               br(),
+                               "*Grad Students Table (Table Exploring Data on Students
+                               aged 25 and Older)")
+                     ),
+                     fluidRow(
+                       box(width = NULL,
+                           title = "Classification Model",
+                           color = "purple",
+                           solidHeader = TRUE,
+                           h4("Calssification Model and Interactive Plot"),
+                           tags$b("Sections: "),
+                           br(),
+                           "*Formal Classification Method (Formal clissification study
+                           conducted to cluster majors by median income for all three
+                           age subsets)",
+                           br(),
+                           "*K-means Interactive Plot (Interactive plot for k-means
+                           clustering on all ages data set)")
+                     ),
+                     fluidRow(
+                           box(width = NULL,
+                               title = "README",
+                               color = "purple",
+                               solidHeader = TRUE,
+                               h4("README File For Original Assignment Information")
+                              )
+                     ),
+                     fluidRow(
+                           box(width = NULL,
+                               title = "About",
+                               color = "purple",
+                               solidHeader = TRUE,
+                               h4("Section About Authors")
+                               )
+                     )
+            )
+            )
+    ),
+    #report
+    tabItem(tabName = "report",
+            includeMarkdown("EDA.md")
+    ),
+    #all ages plot
+    tabItem(tabName = "aa_plot",
+            fluidRow(
+              column(3, 
+                     box( width = NULL,
+                          color = "purple",
+                          h5("Parameters"),
+                          selectInput("xvar_all",
+                                      label = "X-Variable", 
+                                      choices = xvars_all, 
+                                      selected = "Major"),
+                          selectInput("yvar_all",
+                                      label = "Y-Variable", 
+                                      choices = yvars_all, 
+                                      selected = "Median"),
+                          selectInput("color_all",
+                                      label = "Color",
+                                      choices = c("None" = "NULL",
+                                                  colors_all),
+                                      selected = "None")
+                             )
+                     ),
+              column(9,
+                     fluidRow(
+                       box( width = NULL,
+                            plotlyOutput("all_ages",
+                                         height="500px", 
+                                         width = "950px"), 
+                            collapsible = TRUE,
+                            title = "Plot",
+                            color = "purple",
+                            solidHeader = TRUE)),
+                     fluidRow(
+                       box(width = NULL,
+                           "Plot maps relation between selected y-variable and selected 
+                            x-variable (major or major category) 
+                            for students of all ages",
+                            br(),
+                            br(),
+                           "Informs on effect major/major category has on different
+                            variables (ex: median income, unemployment rate)",
+                            br(),
+                            br(),
+                            "Select a variable to be colored in order to examine
+                            whether a third variable has a noticable effect on
+                            the y-variable",
+                            br(),
+                            "         (categorical variables (ex: major category)
+                            mapped as distinct colors, continuous variables (ex: median
+                            income) mapped as color range)",
+                            br(),
+                            br(),
+                           "Hover Mouse over individual points for information",
+                            collapsible = TRUE,
+                            title = "About",
+                            color = "purple",
+                            solidHeader = TRUE)
+                     )
+                   )
+            )
+            ),
+    #recent grads plot
+    tabItem(tabName = "rg_plot",
+            fluidRow(
+              column(3,
+                     box( width = NULL,
+                          color = "purple",
+                          h5("Parameters"),
+                          selectInput("xvar_rec", 
+                                      label = "X-Variable", 
+                                      choices = xvars_rec, 
+                                      selected = "Major"),
+                          selectInput("yvar_rec", 
+                                      label = "Y-Variable", 
+                                      choices = yvars_rec, 
+                                      selected = "Median"),
+                          selectInput("color_rec",
+                                      label = "Color By",
+                                      choices = c("None" = "NULL",
+                                                  colors_rec),
+                                      selected = "None"))
+                     ),
+              column(9,
+                     fluidRow(
+                       box( width = NULL,
+                            plotlyOutput("recent_grads",
+                                         height="500px", 
+                                         width = "950px"), 
+                            collapsible = TRUE,
+                            title = "Plot",
+                            color = "purple",
+                            solidHeader = TRUE)),
+                     fluidRow(
+                       box(width = NULL,
+                           "Plot maps relation between selected y-variable and selected 
+                           x-variable (major or major category) for recent-graduate aged
+                           students (under 28 years old)",
+                           br(),
+                           br(),
+                          "Informs on effect major/major category has on different
+                          variables (ex: median income, unemployment rate)",
+                           br(),
+                           br(),
+                          "Select a variable to be colored in order to examine
+                           whether a third variable has a noticable effect on
+                           the y-variable",
+                           br(),
+                          "         (categorical variables (ex: major category)
+                          mapped as distinct colors, continuous variables (ex: median
+                          income) mapped as color range)",
+                           br(),
+                           br(),
+                          "Hover Mouse over individual points for information",
+                          collapsible = TRUE,
+                          title = "About",
+                          color = "purple",
+                          solidHeader = TRUE)
+                     )
+                   )
+                 )
+            ),
+    #grad students plot
+    tabItem(tabName = "gs_plot",
+            fluidRow(
+            column(3,
+                   box(width = NULL,
+                       h5("Parameters"),
+                       selectInput("xvar_grad", 
+                                   label = "X-Variable", 
+                                   choices = xvars_grad, 
+                                   selected = "Major"),
+                       selectInput("yvar_grad", 
+                                   label = "Y-Variable", 
+                                   choices = yvars_grad, 
+                                   selected = "_median"),
+                       selectInput("color_grad",
+                                   label = "Color By",
+                                   choices = c("None" = "NULL",
+                                               colors_grad),
+                                   selected = "None"),
+                       checkboxInput("separate_points",
+                                     label = "Show Y-variable for Grads (circles) and 
+                                     Nongrads (Triangles) as Separate Points",
+                                     value = FALSE)
+                          )
+                   ),
+            column(9,
+                   fluidRow(
+                     box( width = NULL,
+                          plotlyOutput("grad_students",
+                                       height="500px", 
+                                       width = "950px"), 
+                          collapsible = TRUE,
+                          title = "Plot",
+                          color = "purple",
+                          solidHeader = TRUE)),
+                   fluidRow(
+                     box(width = NULL,
+                         "When Check Box NOT Selected: Plot shows difference in
+                          y-variable between students of grad student age 
+                          (25 and older) who persued graduate education and 
+                         those who did not ",
+                         "(Grad - Nongrad) ",
+                         "And informs on opportunity cost of persuing 
+                         graduate education for certain majors or major categories",
+                         br(),
+                         br(),
+                         "When Check Box IS Selected: Plot shows the relation between 
+                         the selected y-variable and selected x-variable for students  
+                         of grad student age (25 and older) for BOTH those who persued 
+                         graduate education (circles) and those who did not
+                         (triangles), ordered by reletive effect of the x-variable
+                          on the y-variable for grad students",
+                         br(),
+                         br(),
+                         "Select a variable to be colored in order to examine
+                          whether a third variable has a noticable effect on
+                          the y-variable",
+                         br(),
+                         "         (categorical variables (ex: major category)
+                         mapped as distinct colors, continuous variables (ex: median
+                         income) mapped as color range)",
+                         br(),
+                         br(),
+                         "Hover mouse over individual points for information",
+                         collapsible = TRUE,
+                         title = "About",
+                         color = "purple",
+                         solidHeader = TRUE)
+                     )
+                   )
+                 )
+            ),
+    #all ages table
+    tabItem(tabName = "aa_table",
+            h2("All Ages Table"),
+            DT::dataTableOutput("all_ages_table")
+            ),
+    #recent grads table
+    tabItem(tabName = "rg_table",
+            h2("Recent Grads Table (age < 28)"),
+            DT::dataTableOutput("recent_grads_table")
+            ),
+    #grad students table
+    tabItem(tabName = "gs_table",
+            h2("Grad Students Table (age 25+)"),
+            fluidRow(DT::dataTableOutput("grad_students_table_g")),
+            fluidRow(DT::dataTableOutput("grad_students_table_ng"))
+            ),
+    #formal classification model
+    tabItem(tabName = "classification",
+            includeMarkdown("clustering.md")
+            ),
+    #kmeans plots
+    tabItem(tabName = "k_means_plots",
+            fluidRow(
+              column(3,
+                     box(width = NULL,
+                         h5("Parameters"),
+                         selectInput('lables',
+                                     label = "Distinguish Within Clusters (shape) by",
+                                     choices  = xvars_all,
+                                     selected = "Major"),
+                         selectInput('xvar_kmeans',
+                                     label = 'X Variable',
+                                     choices = names(all_ages_cluster),
+                                     selected=names(all_ages)[5]),
+                         selectInput('yvar_kmeans',
+                                     label = 'Y Variable',
+                                     choices = names(all_ages_cluster),
+                                     selected=names(all_ages)[2]),
+                         numericInput('clusters', 'Cluster count',
+                                      3,
+                                      min = 1, 
+                                      max = 15)
+                     )
+               ),
+            column(9,
+                   fluidRow(
+                   box(width = NULL,
+                       plotlyOutput("k_means_clustering_aa",
+                                    height="500px", 
+                                    width = "950px"),
+                       collapsible = TRUE,
+                       title = "K-means Clustering Plots",
+                       color = "purple",
+                       solidHeader = TRUE)
+                   ),
+                   fluidRow(
+                     box(width = NULL,
+                         collapsible = TRUE,
+                         title = "About",
+                         color = "purple",
+                         solidHeader = TRUE,
+                         "Plot shows k-means clustering data for students of all ages.",
+                         br(),
+                         "Shows where different majors fall given 
+                         clustering of selected variables",
+                         br(),
+                         br(),
+                         "Hover mouse over points to see where each major/major
+                         categories fall within chosen clusters.")
+                   )
+                  )
+              )
+            ),
+    #readme file
+    tabItem(tabName = "readme",
+           includeMarkdown("README.md")
+    ),
+    #About (authors etc.)
+    tabItem(tabName = "about",
+            h2("Final Project for Math 285: Introduction to Data Science"),
+            h3("written by: Noam Benkler, Nupur Bindal, and Daniel Matsuda"),
+            uiOutput("study_538"),
+            "Published 3/17/2019"
+    )
+  )
+)
+
+ui <- dashboardPage(
+  skin = "purple",
+  dashboardHeader(title = "Which Majors Make the Most Money?",
+                  titleWidth = 400),
+  sidebar,
+  body
+)
+```
+
+```{r,echo=FALSE}
+server <- function(input, output, session){
+  #action buttons to link from table of contents to tabs
+  observeEvent(input$link_report, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "report")
+  })
+  observeEvent(input$link_plot_aa, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "aa_plot")
+  })
+  observeEvent(input$link_plot_rg, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "rg_plot")
+  })
+  observeEvent(input$link_plot_gs, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "gs_plot")
+  })
+  observeEvent(input$link_table_aa, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "aa_table")
+  })
+  observeEvent(input$link_table_rg, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "rg_table")
+  })
+  observeEvent(input$link_table_gs, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "gs_table")
+  })
+  observeEvent(input$link_classification, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "classification")
+  })
+  observeEvent(input$link_classification_plots, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "k_means_plots")
+  })
+  observeEvent(input$link_readme, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "readme")
+  })
+  observeEvent(input$link_about, {
+    updateTabsetPanel(session = session, inputId = "tabs", selected = "about")
+  })
+  
+  #creating interactive plot function
+  plot_interactive <- function(plot_data, var_x, var_y, var_color) {
+      plot_data %>%
+        ggplot() +
+        geom_point(
+          aes_string(x = paste0("fct_reorder(",
+                                var_x,
+                                "," ,
+                                var_y,
+                                ")"),
+                     y = var_y,
+                     color = var_color),
+          alpha = 0.5
+          )  +
+        theme(
+          axis.text.x = element_blank(),
+          panel.grid.major.x = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "none",
+          plot.background = element_rect(fill = "gray93"),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(linetype = 3, color = "gray50"),
+          axis.line.y = element_line(),
+          strip.background = element_rect(fill = "gray75")
+          )
+    }
+  
+  #PLOTS
+  #all_ages
+  plot_interactive_aa <- reactive({
+    plot_interactive(all_ages,
+                     input$xvar_all,
+                     input$yvar_all,
+                     input$color_all)
+  })
+  library(plotly)
+  output$all_ages <- renderPlotly({
+    plot_interactive_aa()
+  })
+  
+  #recent_grads
+  plot_interactive_rg <- reactive({
+    plot_interactive(recent_grads,
+                     input$xvar_rec,
+                     input$yvar_rec,
+                     input$color_rec)
+  })
+  
+  output$recent_grads <- renderPlotly({
+    plot_interactive_rg()
+  })
+  
+  
+  #grad_students
+  #difference between grad and nongrad
+  plot_interactive_gs <- reactive({
+    if(input$separate_points == FALSE){
+          plot_interactive(grad_students,
+                     input$xvar_grad, 
+                     var_y = paste0("Grad", input$yvar_grad, 
+                                    " - Nongrad", input$yvar_grad),
+                     var_color =  if(input$color_grad == "NULL"|| 
+                                     input$color_grad == "Major"||
+                                     input$color_grad =="Major_category") 
+                     {input$color_grad}
+                     else{paste0("Grad", input$color_grad, 
+                                 " - Nongrad", input$color_grad)}
+      )
+    } else{
+      grad_students%>%
+        ggplot() +
+        geom_point(
+          aes_string(x = paste0("fct_reorder(",
+                                input$xvar_grad ,
+                                ", Grad", input$yvar_grad,
+                                ")"),
+                     y = paste0("Grad",input$yvar_grad),
+                     fill = if(input$color_grad == "NULL"|| 
+                                     input$color_grad == "Major"||
+                                     input$color_grad =="Major_category") 
+                       {input$color_grad}
+                     else{paste0("Grad", input$color_grad)}),
+          alpha = 0.7
+          ) +
+        geom_point(
+          aes_string(x = input$xvar_grad,
+                     y = paste0("Nongrad",input$yvar_grad),
+                     fill = if(input$color_grad == "NULL"|| 
+                                     input$color_grad == "Major"||
+                                     input$color_grad =="Major_category") 
+                       {input$color_grad}
+                     else{paste0("Nongrad", input$color_grad)}),
+          alpha = 0.7,
+          shape = 17
+          )  +
+        theme(
+          axis.text.x = element_blank(),
+          panel.grid.major.x = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "none",
+          plot.background = element_rect(fill = "gray93"),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(linetype = 3, color = "gray50"),
+          axis.line.y = element_line(),
+          strip.background = element_rect(fill = "gray75")
+        )
+      }
+    })
+  
+  output$grad_students <- renderPlotly({
+    plot_interactive_gs()
+  })  
+    
+  #separate points for grad and nongrad
+  output$grad_students_total <-
+
+  
+  
+  #TABLES
+  #all ages
+  output$all_ages_table <- DT::renderDataTable({
+    all_ages
+  })
+  
+  #recent grads
+  output$recent_grads_table <- DT::renderDataTable({
+    recent_grads %>% 
+      #decided to exclude said variables becasue did not appear in other datasets 
+      #and they were not found to be segnificant classifiers
+      select(-c(Rank, Sample_size, Men, Women, ShareWomen,
+                Full_time, Part_time, 
+                College_jobs, Non_college_jobs, Low_wage_jobs))
+    })
+
+    #grad students
+    output$grad_students_table_g <- DT::renderDataTable({
+    grad_students %>% 
+        select(c(1:12), 
+               -c(Grad_sample_size, Major_code, Grad_employed, Grad_unemployed))
+    })
+    output$grad_students_table_ng <- DT::renderDataTable({
+    grad_students %>% 
+        select(-c(4:12, 21:22,
+                  Major_code, Nongrad_employed, Nongrad_unemployed
+                  ))
+    })
+    
+    
+    #KMEANS
+    #clustering all ages
+    clusters_plot <- reactive({
+      all_ages_km <- all_ages %>% 
+        select(input$xvar_kmeans, input$yvar_kmeans) %>% 
+        kmeans(., centers = input$clusters)
+      
+      centers <- all_ages_km$centers %>% as.data.frame()
+      
+     ggplot(data = all_ages) +
+        geom_point(aes_string(x = input$xvar_kmeans,
+                              y = input$yvar_kmeans, 
+                              color = factor(all_ages_km$cluster),
+                              shape = input$lables),
+                   show.legend = FALSE) +
+        geom_point(data = centers,
+                   aes_string(x = input$xvar_kmeans,
+                              y = input$yvar_kmeans), 
+                   pch="X", 
+                   size=4,
+                   show.legend = FALSE)+
+       theme(legend.position = "none")
+
+    })
+    
+    output$k_means_clustering_aa <- renderPlotly({
+      clusters_plot()
+      })
+    
+    
+    #creating url to connect to fivethirtyeight original study
+    url_538 <- a("The Economic Guide To Picking A College Major", 
+               href="https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/")
+    
+  output$study_538 <- renderUI({
+      tagList("*based off study done by FiveThirtyEight: ", url_538)
+    })
+}
+```
+
+```{r, echo = FALSE}
+#app <-
+shinyApp(ui = ui, server = server)
+#runApp(app)
+```

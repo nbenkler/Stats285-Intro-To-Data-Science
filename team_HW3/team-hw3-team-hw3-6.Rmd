@@ -1,0 +1,625 @@
+---
+title: "Team HW 3"
+author: "Noam Benkler and Lewis White"
+date: "Due Wed. 3/6"
+output: github_document
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rpart)
+library(class)
+library(caret)
+library(randomForest)
+library(partykit)
+library(knitr)
+library(kableExtra)
+```
+
+```{r, include=FALSE}
+#reading in data
+train <- read_csv("https://aloy.rbind.io/data/train.csv")
+key <- read.csv("https://aloy.rbind.io/data/county_facts_dictionary.csv")
+```
+
+####Election Predictions
+
+Predicting the outcome of elections has become a very important aspect of the election process. Media outlets nationwide constantly broadcast predictions with American viewers checking to see how their candidate is doing. Election prediction has become so important that people can rise to fame as a result of their election prediction prowess. For example, Nate Silver, founder of FiveThirtyEight, correctly predicted the outcome of 49 of 50 states in the 2008 election, compelling Time magazine to rank him in their list of the top 100 most influential people. In 2012, Silver correctly predicted the result of all 50 states using his statistical model. Like Silver, our goal in this analysis is to predict the outcome of several county wide elections based on a variety of information describing aspects of the county. 
+
+After loading in the data, we started our analysis by combing through the variable in the data set to figure out what exactly they meant. These variables mostly include demographic type information, as well as information on housing and business. We sorted the variables into groups based on how important we thought they would be, and noted predictors that didn’t entirely make sense, either because they seemed irrelevant, or we didn’t totally understand what they meant. We also commented thoughts on several of the variables describing why we thought they would be important or not. For example, one of the variables is percent of persons under age 5, which we discussed as potentially indicating that younger adults are in the area; however, since 5 year olds would not be able to vote for over a decade, it seems weird to include it as a predictor.
+
+The goal of this analysis is to come up with a method of predicting the outcome of county election races based on the assortment of variables provided. Based on the task at hand, a method of classification seemed the best solution. There are several methods of classification – decision trees, bootstrap aggregating, and random forests – each with their own advantages. Decision trees are easy to explain, closely mirror human decision making, can handle categorical predictor and can easily be displayed graphically, but have high variability and do not have as high accuracy as other models. Bootstrap aggregating (bagging) uses training sets to lower the variability, but doesn’t come without its problems: the trees are highly correlated and if there is a strong attribute in the data, there is a chance each tree will split on that attribute. The random forests method involves sampling with replacement from the observations, and growing a tree for each bootstrapped sample. In random forest classification, not all the predictors are included in each tree. Instead, a random sample of predictors are used, which decorrelate the trees. Based on this information, we decided on random forests as our classification method of choice. 
+
+Now that we settled on using random forests for our analysis, we want to make a model with all the predictors to learn which are important and which could potentially be removed from our model. While the goal of our analysis is predictive by nature, implying that it isn’t bad to have collinear variables or variables that don’t entirely make intuitive sense, it is still important to prune the model to prevent overfitting. Overfitting implies that you have a model that performs much better on the training dataset than the test dataset. In other words, the model constructed was too specific to the training data, and couldn’t generalize to the test data.
+
+To prune our predictive model, we wanted to try and eliminate the variables that have the least amount of predictive power. To do this, we wanted to look at the Gini decrease values for each of the predictor variables in the dataset. The Gini impurity is a measure of how often a randomly chosen data point from the dataset would be incorrectly labeled if it was labeled according to the current breakdown of categories in the classification method. The Gini decrease is the improvement made by adding a specific classifier to dataset. In order to be confident in our Gini decrease values, we set up a tibble of NAs and ran a for loop, calculated the Gini decrease values 40 seperate times, and then averaged to find the mean Gini decrease value for each variable. From here, we created a graph of these mean Gini decrease values, arranged from most important variables to least (displayed in Figure 1).
+
+
+Figure 1. Gini decrease values for variables.
+```{r, fig.height=7, include=FALSE}
+train <- train %>%
+  drop_na() %>%
+  mutate(
+    winner16 = factor(winner16)
+  )
+
+
+train %>% count(winner16)
+train %>% summarize(
+  accuracy = mean(winner16 == "Rep"),
+  misclassification = mean(winner16 == "Dem")
+)
+```
+
+```{r, fig.height=7, include=FALSE}
+train_bag <- randomForest(winner16 ~ ., data = train, mtry = 51)
+train_bag
+varImpPlot(train_bag)
+train_rf <- randomForest(winner16 ~ ., data = train)
+train_rf
+gini_decrease <- importance(train_rf) %>% t() %>% as_tibble(colnames = "variable")
+gini_decrease
+varImpPlot(train_rf)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, error= FALSE, message=FALSE}
+train_rf_table <- matrix(rep(NA, 2040), nrow = 51)
+train_rf_table <- as_tibble(train_rf_table)
+
+
+for (i in 1:40) {
+  # start = (i+((i-1)*(50)))
+  # end = ((i+(i-1)*(50))+50)
+  train_rf <- randomForest(winner16 ~ ., data = train)
+  train_rf_table[i] <- importance(train_rf)[1:51]
+  train_rf_table
+}
+
+rownames(train_rf_table) <- train %>% select(-winner16) %>% colnames()
+gini_decrease <-train_rf_table %>% t() %>% as_tibble()
+
+gini_means <- matrix(rep(NA, ncol(gini_decrease)), nrow = 1) 
+colnames(gini_means) <- colnames(gini_decrease)
+gini_means <- as_tibble(gini_means)
+for(i in 1:ncol(gini_decrease)) {
+  if(is.numeric(gini_decrease[[i]])) {
+    gini_means[i] <- mean(gini_decrease[[i]], na.rm = TRUE)
+  }
+}
+
+rownames <- train %>% select (-winner16) %>% colnames()
+gini_means <- gini_means %>% t() %>% as_tibble(rownames = "rownames")
+colnames(gini_means) <- c("variable", "n")
+gini_means <- left_join(x = gini_means, y = key, by = c("variable" = "column_name"))
+```
+```{r, fig.height=8, fig.width=10, echo=FALSE, error=FALSE, message=FALSE}
+base_plot <- gini_means %>% ggplot(aes(x = fct_reorder(description, n), y = n)) + 
+  geom_point() +
+  labs(title = "Fig. 1: Average Effect Each Variable Had on Mean Gini Decrease \nCalculated Over 40 Random Forests",
+       y = "Mean Gini Decrease") +
+  coord_flip() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+base_plot +
+    geom_hline(
+    yintercept = c(0, 10, 20, 30, 40, 50),
+    color = "grey",
+    lwd = 0.3
+  )
+
+
+gini_means$variable <- as.factor(gini_means$variable)
+for_use <- gini_means %>% filter(n>=5.5)
+predictors <- semi_join(x = key, y = for_use, by = c("column_name" = "variable"))
+exclude <- anti_join(x = key, y = for_use, by = c("column_name" = "variable"))
+exclude_list <- exclude$column_name
+```
+
+This graph allowed us to visualize how important each variable was in comparison to each other, and gave us insight into which variables were least valuable to our predictive model. The three most important predictors of election results were race related variables: 1) White alone, not hispanic or latino, percent. 2) Black or African American alone, percent. 3) White alone, percent. This is somewhat expected, as race has become such a large divider in present day politics. The fourth highest mean gini decrease variable – the percent of housing units in multi unit structures – was also one we predicted to be important as it seems multi unit structures could indicate living in cities, which tend to lean towards the democratic party. One variable that we didn’t think would be important and didn’t completely understand was accomodation and food service sales, and this variable ended up much higher on the gini decrease than we thought. Some of the variables that had gini decrease values that indicated less predictive ability were percent of Native Hawaiian, American Indian, or Asian owned firms. In our initial variable inspection, we thought none of the firm ownership would matter, but black and white owned firms had relatively high gini decrease values. 
+
+
+We decided to make a Gini decrease cutoff point, for which variables with a Gini decrease value below this point would be excluded from the model. In order to decide where to place the Gini decrease cutoff point, we compared cross validation results on two models, one containing all the predictor variables, and the other containing the predictor variables minus those we had chosen to exclude. We ran this comparison several times with several different Gini decrease cutoff points and found that a mean Gini decrease cutoff point of 5.5 tended to produce the highest accuracy levels within the training model. Our unpruned model tended to return accuracy levels around 0.925, whereas our pruned model, using a mean Gini decrease cutoff point of 5.5, tended to return accuracy levels of around 0.948. While the accuracy varied slightly every run, cross validation generally returned that the pruned model was most accurate at a level of k = 9. 
+
+A lot of variables had Gini decrease value near the chosen cutoff point. Looking through the variables, particularly those near the cutoff point, it seemed likely that – to prevent overfitting – not all the variables should be included in the model. For example, our initial inspection of the variables led us to believe that the percent of people under age 5 wouldn’t have much of an effect on election results, and indeed, the Gini decrease value for this variable was very near the cutoff point. Because the variable didn’t make intuitive sense and didn’t appear to be a strong predictor (according to Gini value), we decided to cut it from the model. We also decided to cut Merchant wholesaler sales and retail sales per capita for similar reasons. Additionally, we cut the percent population increase from 2010 - 2014 as its Gini decrease was small and the information was represented by the population of 2010 and 2014 measures, which each had a large gini decrease value. Lastly, we decided to cut percent of Asian owned firms in 2007, as the gini effect was small, we didn’t think it would have much of an effect, and the information was somewhat dated.
+
+With this new, further pruned model, we once again ran 15 fold cross-validation to look at the accuracy. Using this new model, the accuracy levels with different k values are very similar to the model using only the cutoff point as a determinant of which variables are included in the model. This is evident in Figure 2., which displays the accuracy levels across k values for the full model, the cutoff value model, and our background knowledge cutoff combination model. 
+
+Figure 2. Tables of Accuracy Levels for the different models
+```{r, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+#cross-validation
+k_grid <- data.frame(k = seq(1, 15, by = 2))
+
+more_metrics  <- function(data, lev = NULL, model = NULL){
+  def <- defaultSummary(data, lev, model)
+  met2 <- twoClassSummary(data, lev, model) # sensitivity, specificity, ROC
+  met3 <- prSummary(data, lev, model)       # precision, recall, AUC
+  c(def, met2, met3)
+}
+
+
+train_control <- trainControl(
+  method = "cv",          # we're performing cross validation
+  number = 15,            # with 15 folds
+  returnResamp = "final",  # and returning only the final model
+  summaryFunction = more_metrics, # pass in our function
+  savePredictions = TRUE,         # save all predictions
+  classProbs = TRUE               # compute class probabilities
+)
+
+knn_fit_orig <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = train,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+#knn_fit_orig
+
+
+background_train_new <- train %>% select(-c(RHI525214, POP715213, BZA115213, SBO115207, SBO515207, MAN450207, BPS030214, SBO415207, SBO015207, AGE135214, SBO215207, RTN131207, PST120214, WTN220207))
+
+
+knn_fit_exc <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = background_train_new,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+#knn_fit_exc
+
+
+
+knn_fit_exc_table <- knn_fit_exc$results %>% select(k, Accuracy, Precision, Recall)
+knn_fit_orig_table <- knn_fit_orig$results %>% select(k, Accuracy, Precision, Recall)
+
+knn_fit_orig_table %>%
+  kable("html", align = 'clc', caption = 'Performance Metrics From Cross Validation on Unpruned Model') %>%
+    kable_styling(full_width = F, position = "float_left")
+ 
+knn_fit_exc_table %>%
+  kable("html", align = 'clc', caption = 'Performance Metrics From Cross Validation on Pruned Model') %>%
+    kable_styling(full_width = F, position = "right")
+```
+
+Based on the accuracy tables and our goal of not overfitting, it seems the model that best fits our predictive analysis goal is the model with the cutoff point and variables cut based on background information. Now that we have our model, let’s get ready for the 2020 election. 
+
+
+&nbsp;
+&nbsp;
+&nbsp;
+
+
+####Code Appendix:
+```{r, eval=FALSE}
+#Probably should include in model
+PST045214	#Population, 2014 estimate
+PST120214	#Population, percent change - April 1, 2010 to July 1, 2014
+AGE775214	#Persons 65 years and over, percent, 2014
+SEX255214	#Female persons, percent, 2014
+RHI125214	#White alone, percent, 2014
+RHI225214	#Black or African American alone, percent, 2014
+RHI325214	#American Indian and Alaska Native alone, percent, 2014
+RHI425214	#Asian alone, percent, 2014
+RHI525214	#Native Hawaiian and Other Pacific Islander alone, percent, 2014
+RHI625214	#Two or More Races, percent, 2014
+RHI725214	#Hispanic or Latino, percent, 2014
+EDU635213	#High school graduate or higher, percent of persons age 25+, 2009-2013
+EDU685213	#Bachelor's degree or higher, percent of persons age 25+, 2009-2013
+VET605213	#Veterans, 2009-2013
+HSG445213	#Homeownership rate, 2009-2013
+INC910213	#Per capita money income in past 12 months (2013 dollars), 2009-2013
+INC110213	#Median household income, 2009-2013
+BZA010213	#Private nonfarm establishments, 2013
+NES010213	#Nonemployer establishments, 2013
+SBO001207	#Total number of firms, 2007 (what is this?)
+PVY020213	#Persons below poverty level, percent, 2009-2013
+POP060210	#Population per square mile, 2010
+
+
+#variables that could replace or contribute to others listed above
+PST040210	#Population, 2010 (April 1) estimates base.  Compared to: PST045214
+POP010210	#Population, 2010.     Either Compared to or instead of: PST045214
+
+RHI825214	#White alone, not Hispanic or Latino, percent, 2014   Instead of: RHI125214 (could be useful to include both becasue quite often specify not gispanic/latino and want to include this. I think we should try a model with both?)
+
+
+HSG010214	#Housing units, 2014    Compared to: HSG445213
+
+HSG096213	#Housing units in multi-unit structures, percent, 2009-2013 Comp to: HSG010214? (may help with urban pop?) - I agree I think this could be interesting.
+
+HSD410213	#Households, 2009-2013
+HSD310213	#Persons per household, 2009-2013
+BZA110213	#Private nonfarm employment, 2013   Compare to:SBO001207
+#all below compare to SBO001207
+SBO315207	#Black-owned firms, percent, 2007
+SBO115207	#American Indian- and Alaska Native-owned firms, percent, 2007
+SBO215207	#Asian-owned firms, percent, 2007
+SBO515207	#Native Hawaiian- and Other Pacific Islander-owned firms, percent, 2007
+SBO415207	#Hispanic-owned firms, percent, 2007
+SBO015207	#Women-owned firms, percent, 2007
+#I dont see how splitting firms up by race ownership is particularly helpful. It might say something about race in the county, but we already have information about it. 
+#all below note from above ends
+
+
+
+
+#Variables I'm not sure what to do with
+AGE295214	#Persons under 18 years, percent, 2014. (Confused b/c some will be 18 by 2016)
+POP715213	#Living in same house 1 year & over, percent, 2009-2013.(Not sure of influence)
+POP645213	#Foreign born persons, percent, 2009-2013 (could help with immigrant vote) - yeah could be useful. Probably more likely to lean democrat. 
+POP815213	#Language other than English spoken at home, pct age 5+, 2009-2013 (||)
+LFE305213	#Mean travel time to work (minutes), workers age 16+, 2009-2013 (relevant?) - related to gas prices/taxes?
+HSG495213	#Median value of owner-occupied housing units, 2009-2013  (help with income?)
+
+
+MAN450207	#Manufacturers shipments, 2007 ($1,000) (seems important but unclear on use) - no idea
+WTN220207	#Merchant wholesaler sales, 2007 ($1,000) (seems important but unclear on use) - no idea
+RTN130207	#Retail sales, 2007 ($1,000) (seems important but unclear on use) - no idea
+RTN131207	#Retail sales per capita, 2007 (seems important but unclear on use) - no idea
+AFN120207	#Accommodation and food services sales, 2007 ($1,000) (||)
+BPS030214	#Building permits, 2014 (||, maybe growth?)
+
+LND110210	#Land area in square miles, 2010 (seems important but unclear on use) - Could be important because I think cities/more concentrated areas are more likely to be democratic.But population per square mile seems better. 
+
+
+
+#Variables I don't think will influence knn
+AGE135214	#Persons under 5 years, percent, 2014 (I just don't see the use, none will be voters)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, fig.height=7, eval = FALSE}
+#mutating winner16 to factor
+train <- train %>%
+  drop_na() %>%
+  mutate(
+    winner16 = factor(winner16)
+  )
+
+#innitial accuracy and misclassification summary
+train %>% count(winner16)
+train %>% summarize(
+  accuracy = mean(winner16 == "Rep"),
+  misclassification = mean(winner16 == "Dem")
+)
+```
+
+```{r, fig.height=7, eval=FALSE}
+#origional look at random forrests and bagging
+train_bag <- randomForest(winner16 ~ ., data = train, mtry = 51)
+train_bag
+varImpPlot(train_bag)
+train_rf <- randomForest(winner16 ~ ., data = train)
+train_rf
+gini_decrease <- importance(train_rf) %>% t() %>% as_tibble(colnames = "variable")
+gini_decrease
+varImpPlot(train_rf)
+
+```
+
+
+```{r, fig.height=8, fig.width=10, eval = FALSE, eval = FALSE}
+#creating empty tibble for random forest gini means
+train_rf_table <- matrix(rep(NA, 2040), nrow = 51)
+train_rf_table <- as_tibble(train_rf_table)
+
+#running multiple random forests and adding them to tibble
+for (i in 1:40) {
+  # start = (i+((i-1)*(50)))
+  # end = ((i+(i-1)*(50))+50)
+  train_rf <- randomForest(winner16 ~ ., data = train)
+  train_rf_table[i] <- importance(train_rf)[1:51]
+  train_rf_table
+}
+train_rf_table
+
+#arranging the mean gini decrease table
+rownames(train_rf_table) <- train %>% select(-winner16) %>% colnames()
+gini_decrease <-train_rf_table %>% t() %>% as_tibble()
+gini_decrease
+
+#creating empty tibble for mean of mean gini decreases found from random forests
+gini_means <- matrix(rep(NA, ncol(gini_decrease)), nrow = 1) 
+colnames(gini_means) <- colnames(gini_decrease)
+gini_means <- as_tibble(gini_means)
+#calculating mean of mean gini decreases calculated from 40 rf runs
+for(i in 1:ncol(gini_decrease)) {
+  if(is.numeric(gini_decrease[[i]])) {
+    gini_means[i] <- mean(gini_decrease[[i]], na.rm = TRUE)
+  }
+}
+
+#pulling rownames for gini decrease table
+rownames <- train %>% select (-winner16) %>% colnames()
+#organizing gini decrease table so variables are rows and thier mean gini decreases
+gini_means <- gini_means %>% t() %>% as_tibble(rownames = "rownames")
+colnames(gini_means) <- c("variable", "n")
+#edit table to include key for variable names
+gini_means <- left_join(x = gini_means, y = key, by = c("variable" = "column_name"))
+
+#plot of mean of mean gini decreases using gini_means table
+base_plot <- gini_means %>% ggplot(aes(x = fct_reorder(description, n), y = n)) + 
+  geom_point() +
+  labs(title = "Fig. 1: Average Effect Each Variable Had on Mean Gini Decrease \nCalculated Over 40 Random Forests",
+       y = "Mean Gini Decrease") +
+  coord_flip() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.title.y = element_blank()
+  )
+#continuation of previous plot
+base_plot +
+    geom_hline(
+    yintercept = c(0, 10, 20, 30, 40, 50),
+    color = "grey",
+    lwd = 0.3
+  )
+
+#selecting variables with mean gini means decrease below 5.5 for use in model
+gini_means$variable <- as.factor(gini_means$variable)
+for_use <- gini_means %>% filter(n>=5.5)
+#predictor variables to use
+predictors <- semi_join(x = key, y = for_use, by = c("column_name" = "variable"))
+predictors
+#predictor variables NOT for use
+exclude <- anti_join(x = key, y = for_use, by = c("column_name" = "variable"))
+exclude 
+#list of variables to exclude
+exclude_list <- exclude$column_name
+exclude_list
+```
+
+```{r, eval=FALSE}
+#standardize variables
+standardize <- function(x, na.rm = FALSE) {
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
+}
+#rescale all of the potential predictors in the training set
+train <- train %>%
+  mutate_if(is.numeric, standardize, na.rm = TRUE)
+
+
+#load in test set
+testNoY <- read_csv("https://aloy.rbind.io/data/testNoY.csv")
+#standardize test set
+train_orig <- train
+train_means <- train_orig %>% summarize_if(is.numeric, mean, na.rm = TRUE)
+train_sds <- train_orig %>% summarize_if(is.numeric, sd, na.rm = TRUE)
+
+for(i in colnames(train_means)) {
+  testNoY[[i]] <- (testNoY[[i]] - train_means[[i]]) / train_sds[[i]]
+}
+
+#separate objects with the classes and the predictors
+train_class <- train %>% pull(winner16) 
+train_preds <- train %>% select(-c(exclude_list, winner16))
+testNoY_preds  <- testNoY %>% select(-c(exclude_list))
+
+#knn classifier
+nn7_class <- knn(
+  train = train_preds, # matrix/data frame of training set cases
+  test = testNoY_preds,   # matrix/data frame of test set cases
+  cl = train_class,    # vector of true classifications of training set
+  k = 7                   # number of neighbors considered
+)
+
+testNoY <- testNoY %>%
+  mutate(pred_winner= nn7_class)
+```
+
+```{r, eval = FALSE}
+#cross-validation
+k_grid <- data.frame(k = seq(1, 15, by = 2))
+
+train_control <- trainControl(
+  method = "cv",          # we're performing cross validation
+  number = 15,            # with 15 folds
+  returnResamp = "final"  # and returning only the final model
+)
+
+
+knn_fit <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = train,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+knn_fit
+
+#training set with out excluded variables found from gini decreases
+train_new <- train %>% select(-c(exclude_list))
+
+
+knn_fit <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = train_new,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+knn_fit
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE, eval=FALSE}
+#cross-validation
+k_grid <- data.frame(k = seq(1, 15, by = 2))
+
+#Adding extended metrics calculations to cross validations
+more_metrics  <- function(data, lev = NULL, model = NULL){
+  def <- defaultSummary(data, lev, model)
+  met2 <- twoClassSummary(data, lev, model) # sensitivity, specificity, ROC
+  met3 <- prSummary(data, lev, model)       # precision, recall, AUC
+  c(def, met2, met3)
+}
+
+#cross validation for untrimmed model
+train_control <- trainControl(
+  method = "cv",          # we're performing cross validation
+  number = 15,            # with 15 folds
+  returnResamp = "final",  # and returning only the final model
+  summaryFunction = more_metrics, # pass in our function
+  savePredictions = TRUE,         # save all predictions
+  classProbs = TRUE               # compute class probabilities
+)
+
+knn_fit_orig <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = train,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+#cross validation for untrimmed model
+knn_fit_orig
+
+
+#training set excluding final variables
+background_train_new <- train %>% select(-c(RHI525214, POP715213, BZA115213, SBO115207, SBO515207, MAN450207, BPS030214, SBO415207, SBO015207, AGE135214, SBO215207, RTN131207, PST120214, WTN220207))
+
+#cross validation of pruned model
+knn_fit_exc <- train(
+  winner16 ~ .,                       # response ~ explanatory variables
+  data = background_train_new,                # data set used for k-fold cv
+  method = "knn",                  # specifying knn model
+  preProc = c("center", "scale"),  # within each fold, standardize
+  tuneGrid = k_grid,               # grid for parameters being tuned
+  trControl = train_control        # pass in training details
+)
+
+knn_fit_exc
+
+
+#tables of the pruned and unpruned models selecting for knn, accuracy, precision, and recall metrics
+knn_fit_exc_table <- knn_fit_exc$results %>% select(k, Accuracy, Precision, Recall)
+knn_fit_orig_table <- knn_fit_orig$results %>% select(k, Accuracy, Precision, Recall)
+
+
+#neat tables
+knn_fit_orig_table %>%
+  kable("html", align = 'clc', caption = 'Performance Metrics From Cross Validation on Unpruned Model') %>%
+    kable_styling(full_width = F, position = "float_left")
+ 
+knn_fit_exc_table %>%
+  kable("html", align = 'clc', caption = 'Performance Metrics From Cross Validation on Pruned Model') %>%
+    kable_styling(full_width = F, position = "right")
+```
+
+```{r, eval=FALSE}
+#standardize
+standardize <- function(x, na.rm = FALSE) {
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
+}
+#rescale all of the potential predictors in the training set
+train <- train %>%
+  mutate_if(is.numeric, standardize, na.rm = TRUE)
+
+
+#load in test set
+testNoY <- read_csv("https://aloy.rbind.io/data/testNoY.csv")
+#standardize test set
+train_orig <- read_csv("https://aloy.rbind.io/data/train.csv")
+train_means <- train_orig %>% summarize_if(is.numeric, mean, na.rm = TRUE)
+train_sds <- train_orig %>% summarize_if(is.numeric, sd, na.rm = TRUE)
+
+#standardize test set
+for(i in colnames(train_means)) {
+  testNoY[[i]] <- (testNoY[[i]] - train_means[[i]]) / train_sds[[i]]
+}
+
+#separate objects with the classes and the predictors (use common sense as well as exclusion list from random forest mean gini decreases)
+train_class <- train %>% pull(winner16) 
+train_preds <- train %>% select(-c(RHI525214, POP715213, BZA115213, SBO115207, SBO515207, MAN450207, BPS030214, SBO415207, SBO015207, AGE135214, SBO215207, RTN131207, PST120214, WTN220207, winner16))
+testNoY_preds  <- testNoY %>% select(-c(RHI525214, POP715213, BZA115213, SBO115207, SBO515207, MAN450207, BPS030214, SBO415207, SBO015207, AGE135214, SBO215207, RTN131207, PST120214, WTN220207))
+
+#knn classifier
+nn7_class <- knn(
+  train = train_preds, # matrix/data frame of training set cases
+  test = testNoY_preds,   # matrix/data frame of test set cases
+  cl = train_class,    # vector of true classifications of training set
+  k = 7                   # number of neighbors considered
+)
+
+print(nn7_class)
+#add pred_winner to testNoY
+testNoY <- testNoY %>%
+  mutate(pred_winner= nn7_class)
+
+#printCSV
+write_csv(testNoY, "testNoY_LastNames.csv")
+```
+
