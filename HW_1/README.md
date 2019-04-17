@@ -2,9 +2,10 @@ Homework 1 - Due 1/16
 ================
 Math 285, Winter 2019
 
-You are currently in the GitHub repository (repo) for `hw1`. The assignment is contained in `hw1.Rmd`. Please edit this file and submit it, along with a knitted `h1.md` file.
+HW1 focused on basic r commands and plotting
 
-Homework process
-----------------
-
-For help on the homework process, reread the "Steps for downloading and editing assignments from GitHub Classroom" of [GitHub for math 285](https://github.com/intro-data-science-w2019/class_materials/blob/master/resources/github-for-students.md). When you are done with your homework, **don't forget to push your changes back to GitHub**!
+hw1.md
+  + markdown file for completed homework
+  
+hw2.rmd
+  + r code for completed hw.
