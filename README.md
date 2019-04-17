@@ -42,7 +42,12 @@ hw5.md
 
 hw5.rmd
   + code for hw5.md
-  
+
+## final_project
+
+Final project for Stats: 285
+  + Project designed to teach students how to work with Shiny apps and solidify concepts taught throughout the term
+  + Shiny app URL: https://noam-benkler.shinyapps.io/Math285-Data-Science-Final-Project/
 
 ## team_hw1
 
@@ -58,4 +63,12 @@ team_hw2.md
   + Short Paper written on whether racial discrimination still exists in the jury selection process despite 1986 ruling in *Batson v. Kenucky*
 
 team_hw2.rmd
+  + r code for md document
+
+## team_hw3
+
+team_hw3.md
+  + Short Paper written on use of classification and K-nn clustering to predict the results of several county level elections during 2016
+
+team_hw3.rmd
   + r code for md document
