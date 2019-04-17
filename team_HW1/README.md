@@ -16,13 +16,9 @@ You should show your code in your blog post, but only the minimal code necessary
 Data
 ----
 
-You are free to use whatever data you want. However, the purpose of this exercise is to learn how to make good data graphics, not to wrangle data (don't worry, we're headed there next). So I don't want you to spend much time wrangling data. There are perfectly good data sets available through R packages that are already well-curated:
+The data set we chose to use for this project was
 
--   `nycflights13`: data about flights leaving from the three major NYC airports in 2013
--   `babynames`: history of baby names from the Social Security Administration
--   `Lahman`: comprehensive historical archive of major league baseball data
 -   `fueleconomy`: fuel economy data from the EPA, 1985–2015
--   `fivethirtyeight`: provides access to data sets that drive many articles on FiveThirtyEight.
 
 Ackowledgements
 ---------------
