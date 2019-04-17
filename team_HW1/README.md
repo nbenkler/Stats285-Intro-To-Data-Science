@@ -2,11 +2,6 @@
 Team Assignment 1: Data Visualization
 =====================================
 
-Due date
---------
-
-The blog post is due on GitHub by Tuesday, January 29 at 12:00 pm (noon).
-
 Description
 -----------
 
@@ -16,8 +11,7 @@ Your blog post should be short---I envision an introductory paragraph that expla
 
 You should write your blog post in R Markdown and create your data graphic using `ggplot2`. You will upload your R Markdown (.Rmd) and markdown (.md) files to GitHub. Do not forget to give your post an informative title!
 
-You should show your code in your blog post, but only the minimal code necessary to produce your plot---not all the code that you wrote in the process of doing this assignment! Here are some examples of articles that are similar in spirit to yours. Most of these are much longer than yours will be, and may contain multiple graphics, but the idea is similar: use a good data graphic to tell us something we don't already know.
-
+You should show your code in your blog post, but only the minimal code necessary to produce your plot---not all the code that you wrote in the process of doing this assignment!
 
 Data
 ----
