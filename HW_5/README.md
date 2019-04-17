@@ -2,9 +2,11 @@ Homework 5 - Due 3/1
 ================
 Math 285, Winter 2019
 
-You are currently in the GitHub repository (repo) for `hw5`. The assignment is contained in `hw5.Rmd`. Please edit this file and submit it, along with a knitted `hw5.md` file.
+Hw designed to test knowledge and competency with classification using KNN Clustering, Cross Validation, Classification Trees, etc.
 
-Homework process
-----------------
-
-For help on the homework process, reread the "Steps for downloading and editing assignments from GitHub Classroom" of [GitHub for math 285](https://github.com/intro-data-science-w2019/class_materials/blob/master/resources/github-for-students.md). When you are done with your homework, **don't forget to push your changes back to GitHub**!
+hw5.Rmd
+  + source code for markdown file.
+  
+hw5.md
+  + completed markdown file for homework.
+  +NB: LaTeX commands and tables don't work in github .md documents so must open as .html doccument to view completed .md file
