@@ -1,6 +1,7 @@
 Homework 5 - Due 3/1
 ================
 Math 285, Winter 2019
+------
 
 Hw designed to test knowledge and competency with classification using KNN Clustering, Cross Validation, Classification Trees, etc.
 
